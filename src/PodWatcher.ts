@@ -42,7 +42,7 @@ class PodWatcher implements IPodWatcher {
             try {
                 await this.watch()
             } catch(e) {
-                console.log(e)
+                // we swallow the error and reconnect (it's probably a timeout)
                 if(e instanceof DOMException) {
                     continue
                 }
@@ -53,6 +53,9 @@ class PodWatcher implements IPodWatcher {
 
     async watch() {
         return new Promise(async(resolve, reject) => {
+            // TODO: we have a double call into the getPodsJson at app start
+            // add the ability to pass a one time resourceVersion to avoid this
+            // probably have to move this call to the `start` method
             const podsList = await this.api.getPodsJson()
             const {body} = await this.api.getWatchPodsResponse(podsList.metadata.resourceVersion)
             const reader = body.getReader()
