@@ -8,14 +8,36 @@ type WatchEvent = {
     object: PodDef
 }
 
-class PodWatcher {
+type EventHandler = (e: WatchEvent) => void
 
+interface IPodWatcher {
+    registerHandler(h: EventHandler): void
+    start(): Promise<void>
+}
+
+class PodWatcher implements IPodWatcher {
+
+    private handlers: EventHandler[] = []
+    private started = false
     constructor(
         private readonly api: KubeApi,
-        private handler: (e: WatchEvent) => void
     ) {}
 
+    registerHandler(h: EventHandler) {
+        this.handlers.push(h)
+    }
+
+    notifyHandlers(e: WatchEvent) {
+        this.handlers.forEach((h: EventHandler) => h(e))
+    }
+
     async start() {
+        if(this.started) {
+            return
+        }
+
+        this.started = true
+
         while(true) {
             try {
                 await this.watch()
@@ -33,7 +55,6 @@ class PodWatcher {
         return new Promise(async(resolve, reject) => {
             const podsList = await this.api.getPodsJson()
             const {body} = await this.api.getWatchPodsResponse(podsList.metadata.resourceVersion)
-
             const reader = body.getReader()
             const decoder = new TextDecoder()
             let result = ""
@@ -51,7 +72,7 @@ class PodWatcher {
                 try {
                     const json = JSON.parse(result)
                     result = ""
-                    this.handler(json)
+                    this.notifyHandlers(json)
                 } catch(e) { 
                     if (e instanceof Error) {
                         console.log(`WARN: failed parsiing with: ${e.message}`)
@@ -67,6 +88,7 @@ class PodWatcher {
 
 
 export {
+    type IPodWatcher,
     type WatchEvent,
     PodWatcher
 }

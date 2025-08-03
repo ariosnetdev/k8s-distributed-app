@@ -57,7 +57,7 @@ class Pod {
 class PodsListJson {
     constructor(
         readonly metadata = new Metadata(),
-        readonly items = new Pod()
+        readonly items: Pod[] = []
     ) {}
 }
 
@@ -140,5 +140,6 @@ class KubeApi {
 
 export {
     type PodDef,
+    type Pod,
     KubeApi
 }
