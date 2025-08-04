@@ -20,7 +20,19 @@ spec:
         imagePullPolicy: Never
         env:
           - name: NODE_EXTRA_CA_CERTS
-            value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt          
+            value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
         ports:
         - containerPort: 3000
 ---

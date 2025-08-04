@@ -9,6 +9,10 @@ const serverEvents: any[] = []
 
 let token = ""
 
+let namespace = process.env.POD_NAMESPACE ?? ""
+let podIP = process.env.POD_IP ?? ""
+let podName = process.env.POD_NAME ?? ""
+
 try {
     token = readFileSync("/var/run/secrets/kubernetes.io/serviceaccount/token", "utf-8")
 } catch(err) {
@@ -17,23 +21,31 @@ try {
     }
 }
 
-const api = new KubeApi(token, "myapp")
+const api = new KubeApi(token, namespace)
 const watcher = new PodWatcher(api)
-const pcm = new PCM(api, watcher)
+const pcm = new PCM(api, watcher, podIP)
 
 pcm.start()
 
 app.get('/active', async (c) => {
-
     return c.json({
         pods: pcm.getActivePods()
     })
 })
+
 app.get('/', async (c) => {
 
     return c.json({
         // @ts-ignore
         pods: globalPodList
+    })
+})
+
+app.get('/test', async (c) => {
+    return c.json({
+        message: "hello world from the test endpoint",
+        ip: podIP,
+        name: podName
     })
 })
 

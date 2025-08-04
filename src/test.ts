@@ -11,7 +11,12 @@ class Help {
     ) {}
 }
 
-console.log(JSON.stringify(new Help()))
-console.log(JSON.stringify(new Help(
-    new Data("test")
-)))
+
+
+const lastHeartbeat = Math.floor((Date.now() / 1000) - 10)
+
+setInterval(() => {
+    const current = Math.floor(Date.now() / 1000)
+
+    console.log(`diff between last and now is: ${current - lastHeartbeat}`)
+}, 500)
