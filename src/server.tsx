@@ -30,53 +30,47 @@ const pcm = new PCM(api, watcher, podIP)
 
 pcm.start()
 
-app.get('/active', async (c) => {
+app.get('/pods', async (c) => {
     return c.json({
-        pods: pcm.getAllPods()
+        pods: pcm.getActivePods()
     })
 })
 
-app.get('/', (c) => c.html(<Home pods={pcm.getActivePods()} />))
+app.get('/', (c) => c.html(<Home pods={pcm.getActivePods()} self={podName}/>))
 
 app.get('/events', (c) => {
     return streamSSE(c, async (stream) => {
-
-        const podsList = await api.getPodsJson()
-        await stream.writeSSE({
-            data: JSON.stringify({
-                "pods": renderToString(<PodsList pods={podsList.items} />)
-            })
-        })
-
         const { reject, resolve, promise } = Promise.withResolvers()
         const handler = async (e: WatchEvent) => {
             try {
-                const podsList = await api.getPodsJson()
+                console.log(`STREAM HANDLER: recieved a watch event of type: ${e.type}`)
+                const podsList = pcm.getActivePods()
                 await stream.writeSSE({
                     data: JSON.stringify({
                         "event": e,
-                        "pods": renderToString(<PodsList pods={podsList.items} />)
+                        "pods": renderToString(<PodsList pods={podsList} self={podName}/>)
                     })
                 })
             } catch (e) {
-                console.log(e)
+                console.log("STREAM HANDLER: unhandled exception: ", e)
                 reject()
             }
         }
 
         watcher.registerHandler(handler)
-
         stream.onAbort(() => {
             watcher.cleanUpHandler(handler)
         })
 
+        const podsList = pcm.getActivePods()
+        await stream.writeSSE({
+            data: JSON.stringify({
+                "pods": renderToString(<PodsList pods={podsList} self={podName}/>)
+            })
+        })
+
         await promise
     })
-})
-
-app.get('/pods', async (c) => {
-    const json = await api.getPodsJson()
-    return c.json(json)
 })
 
 app.get(
@@ -89,5 +83,5 @@ app.get(
 export default {
     fetch: app.fetch,
     port: 3000,
-    idleTimeout: 30
+    idleTimeout: 0
 }

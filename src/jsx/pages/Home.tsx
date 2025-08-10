@@ -3,6 +3,7 @@ import { Layout } from '../DefaultLayout'
 
 type HomeProps = {
     pods: Pod[]
+    self: string
 }
 
 const Status = (props: {
@@ -32,12 +33,13 @@ const Status = (props: {
 }
 
 export const PodsList = (props: {
-    pods: Pod[]
+    pods: Pod[],
+    self: string
 }) => <> {props.pods.map(pod => {
         return (
             <tr class="hover:bg-gray-700/50 transition-colors">
                 <td class="px-6 py-4 text-sm font-medium text-gray-200">
-                    {pod.metadata.name}
+                    {pod.metadata.name} {pod.metadata.name === props.self ? <span>(self)</span>: null}
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-400">
                     {pod.status.podIP}
@@ -76,7 +78,7 @@ export const Home = (props: HomeProps) => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-700" id="table-body">
-                                <PodsList pods={props.pods}/>
+                                <PodsList pods={props.pods} self={props.self}/>
                             </tbody>
                         </table>
                     </div>

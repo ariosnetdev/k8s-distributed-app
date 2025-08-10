@@ -3,7 +3,6 @@ import { IPodWatcher, PodWatcher, type WatchEvent } from "./PodWatcher"
 
 class PCM {
     pods = new Map<string, Pod>()
-    allPods = new Map<string, Pod>()
 
     public constructor(
         readonly api: KubeApi,
@@ -13,10 +12,6 @@ class PCM {
 
     getActivePods()  {
         return Array.from(this.pods.values())
-    }
-
-    getAllPods()  {
-        return Array.from(this.allPods.values())
     }
 
     async start() {
@@ -32,28 +27,29 @@ class PCM {
 
         this.watcher.registerHandler(this.getEventHandler())
         this.watcher.start()
-        //this.heartbeat()
+        this.heartbeat()
     }
 
     async heartbeat() {
 
         // every 5 seconds let's get a status from our friends
         setInterval(() => {
+            // this.pods == all the active ones (phase == "Running"
+            // while this.allPods == everything returned from the api
             Array.from(this.pods.values()).forEach(item => {
 
                 if(item.status.podIP !== this.podIp) {
 
-                    fetch(`http://${item.status.podIP}:3000/`)
+                    fetch(`http://${item.status.podIP}:3000/pods`)
                     .then(async(response) => {
 
                         if(response.status !== 200) {
                             console.log(response.statusText)
                         }
 
-                        return response.json()
-                    }).then(json => {
+                        //console.log(`hearbeat response from friend with IP: ${item.status.podIP}, status: ${response.status}`)
 
-                        console.log(`reponse from friend with IP of: ${item.status.podIP} was ${JSON.stringify(json, null, 4)}`)
+                        return response.json()
                     }).catch(err => {
                         if(err instanceof Error) {
                             console.log(`ERROR: when calling pod by ip: ${item.status.podIP} ${err.message}`)
@@ -66,36 +62,31 @@ class PCM {
     }
 
 
-    async updateAllPods() {
-        const json = await this.api.getPodsJson()
-
-        json.items.forEach(pod => {
-            this.allPods.set(pod.metadata.name, pod)
-        })
-    }
+    // async updateAllPods() {
+    //     const json = await this.api.getPodsJson()
+    //
+    //     json.items.forEach(pod => {
+    //         this.allPods.set(pod.metadata.name, pod)
+    //     })
+    // }
 
     getEventHandler() {
         // *this* below refers to our current instance of PCM
         return (e: WatchEvent) => {
 
-            console.log(`event received from the watch of type: ${e.type}`) 
+            console.log(`PCM: event received from the watch of type: ${e.type}`) 
 
             const obj = e.object
             const pod = this.pods.get(obj.metadata.name)
-            // do nothing if we don't have this pod
-            if(e.type === "DELETED" && !pod) return
             // if we do have this pod remove it
             if(e.type === "DELETED" && pod) {
                 this.pods.delete(obj.metadata.name)
-                return 
             }
 
             if (e.type === "ADDED" && !pod) {
                 if(obj.status?.phase === "Running") {
                     this.pods.set(obj.metadata.name, new Pod(obj.status, obj.metadata))
                 }
-
-                return
             }
 
             if (e.type === "MODIFIED") {  
@@ -105,10 +96,9 @@ class PCM {
                 } else {
                     this.pods.delete(obj.metadata.name)
                 }
-
-                return
             }
 
+            //this.updateAllPods()
         }
     }
 }
