@@ -1,6 +1,6 @@
 # Kubernetes distributed service demo
 
-each pod maintains a running list of all other pods via the kube rest api 
+each pod maintains a running list of all other pods via the kube rest api.
 on an interval each pod sends a heartbeat message to it's friends.
 
 includes a landing page that recieves live updates of pod statuses as they change
@@ -25,8 +25,6 @@ use `update.sh` to push changes to the cluster once code changes are made
 
 ## Todo
 
-- [] fix the double request to kube rest api on start up
-- [] implement a consensus algo for distrbuting data across the cluster
-
-
+- [ ] fix the double request to kube rest api on start up
+- [ ] implement a consensus algo for distributing data across the cluster
 
