@@ -110,7 +110,7 @@ class KubeApi {
 
     async getWatchPodsResponse(resourceVersion: string) {
 
-        if(!resourceVersion) {
+       if(!resourceVersion) {
             throw new Error("Argument Exception: resourceVersion needs to be defined")
         }
 
@@ -140,6 +140,6 @@ class KubeApi {
 
 export {
     type PodDef,
-    type Pod,
+    Pod,
     KubeApi
 }

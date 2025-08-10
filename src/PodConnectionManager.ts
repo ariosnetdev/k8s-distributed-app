@@ -1,15 +1,9 @@
-import { KubeApi } from "./kubeapi";
+import { KubeApi, Pod } from "./kubeapi";
 import { IPodWatcher, PodWatcher, type WatchEvent } from "./PodWatcher"
 
-class PCMPod {
-    constructor(
-        public name: string = "",
-        public ip: string = "",
-    ) {}
-}
-
 class PCM {
-    pods = new Map<string, PCMPod>()
+    pods = new Map<string, Pod>()
+    allPods = new Map<string, Pod>()
 
     public constructor(
         readonly api: KubeApi,
@@ -18,7 +12,11 @@ class PCM {
     ) {}
 
     getActivePods()  {
-        return Object.fromEntries(this.pods)
+        return Array.from(this.pods.values())
+    }
+
+    getAllPods()  {
+        return Array.from(this.allPods.values())
     }
 
     async start() {
@@ -27,17 +25,14 @@ class PCM {
 
         podList
             .items
-            .filter((item: any) => item.status.phase === "Running")
-            .forEach((item: any) => {
-                this.pods.set(item.metadata.name, {
-                    name: item.metadata.name,
-                    ip: item.status.podIP
-                })
+            .filter((item: Pod) => item.status.phase === "Running")
+            .forEach((item: Pod) => {
+                this.pods.set(item.metadata.name, new Pod(item.status, item.metadata))
             });
 
         this.watcher.registerHandler(this.getEventHandler())
         this.watcher.start()
-        this.heartbeat()
+        //this.heartbeat()
     }
 
     async heartbeat() {
@@ -46,9 +41,9 @@ class PCM {
         setInterval(() => {
             Array.from(this.pods.values()).forEach(item => {
 
-                if(item.ip !== this.podIp) {
+                if(item.status.podIP !== this.podIp) {
 
-                    fetch(`http://${item.ip}:3000/test`)
+                    fetch(`http://${item.status.podIP}:3000/`)
                     .then(async(response) => {
 
                         if(response.status !== 200) {
@@ -58,16 +53,25 @@ class PCM {
                         return response.json()
                     }).then(json => {
 
-                        console.log(`reponse from friend with IP of: ${item.ip} was ${JSON.stringify(json, null, 4)}`)
+                        console.log(`reponse from friend with IP of: ${item.status.podIP} was ${JSON.stringify(json, null, 4)}`)
                     }).catch(err => {
                         if(err instanceof Error) {
-                            console.log(`ERROR: when calling pod by ip: ${item.ip} ${err.message}`)
+                            console.log(`ERROR: when calling pod by ip: ${item.status.podIP} ${err.message}`)
                         }
                     })
                 }
             })
 
         }, 5000)
+    }
+
+
+    async updateAllPods() {
+        const json = await this.api.getPodsJson()
+
+        json.items.forEach(pod => {
+            this.allPods.set(pod.metadata.name, pod)
+        })
     }
 
     getEventHandler() {
@@ -88,10 +92,7 @@ class PCM {
 
             if (e.type === "ADDED" && !pod) {
                 if(obj.status?.phase === "Running") {
-                    this.pods.set(obj.metadata.name, {
-                        name: obj.metadata.name,
-                        ip: obj.status.podIP
-                    })
+                    this.pods.set(obj.metadata.name, new Pod(obj.status, obj.metadata))
                 }
 
                 return
@@ -100,10 +101,7 @@ class PCM {
             if (e.type === "MODIFIED") {  
                 if(obj.status?.phase === "Running") {
                     // just write over the guy if he exist?
-                    this.pods.set(obj.metadata.name, {
-                        name: obj.metadata.name,
-                        ip: obj.status.podIP
-                    })
+                    this.pods.set(obj.metadata.name, new Pod(obj.status, obj.metadata))
                 } else {
                     this.pods.delete(obj.metadata.name)
                 }

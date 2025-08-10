@@ -27,6 +27,10 @@ class PodWatcher implements IPodWatcher {
         this.handlers.push(h)
     }
 
+    cleanUpHandler(h: EventHandler) {
+        this.handlers = this.handlers.filter(item => item !== h)
+    }
+
     notifyHandlers(e: WatchEvent) {
         this.handlers.forEach((h: EventHandler) => h(e))
     }
