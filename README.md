@@ -16,7 +16,7 @@ includes a landing page that recieves live updates of pod statuses as they chang
 ```sh
 $ kind create cluster --config=./cluster.yml
 $ docker build . -t myapp:latest
-$ kind load dockedr-image myapp --name local-dev
+$ kind load docker-image myapp --name local-dev
 # make sure you have kubeconfig set up properly to talk to KIND
 $ kubectl apply -f deployment.yml
 ```

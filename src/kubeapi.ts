@@ -31,6 +31,7 @@ class KubeApiError extends Error {
     }
 }
 
+// ** BEGIN Class Defs **
 
 class Metadata {
     constructor(
@@ -46,13 +47,27 @@ class Status {
     ) {}
 }
 
+type PodCreateOpts = {
+    phase?: string
+    ip?: string
+    name?: string
+}
 
 class Pod {
     constructor(
         readonly status = new Status(),
         readonly  metadata = new Metadata()
     ) {}
+
+    static withOpts({
+        phase = "",
+        ip = "",
+        name = ""
+    }: PodCreateOpts) {
+        return new Pod(new Status(phase, ip), new Metadata("", name))
+    }
 }
+
 
 class PodsListJson {
     constructor(
@@ -61,7 +76,13 @@ class PodsListJson {
     ) {}
 }
 
-class KubeApi {
+// ** END Class Defs **
+
+interface IKubeApi {
+    getPodsJson() : Promise<PodsListJson>
+}
+
+class KubeApi implements IKubeApi{
 
     private readonly baseUrl = "https://kubernetes.default.svc"
     private readonly token: string
@@ -140,6 +161,10 @@ class KubeApi {
 
 export {
     type PodDef,
+    type IKubeApi,
+    PodsListJson,
+    Status,
+    Metadata,
     Pod,
     KubeApi
 }

@@ -1,5 +1,6 @@
 import {
     type PodDef,
+    IKubeApi,
     KubeApi
 } from "./kubeapi"
 
@@ -20,7 +21,7 @@ class PodWatcher implements IPodWatcher {
     private handlers: EventHandler[] = []
     private started = false
     constructor(
-        private readonly api: KubeApi,
+        private readonly api: IKubeApi
     ) {}
 
     registerHandler(h: EventHandler) {
@@ -61,7 +62,7 @@ class PodWatcher implements IPodWatcher {
             // add the ability to pass a one time resourceVersion to avoid this
             // probably have to move this call to the `start` method
             const podsList = await this.api.getPodsJson()
-            const {body} = await this.api.getWatchPodsResponse(podsList.metadata.resourceVersion)
+            const {body} = await (<KubeApi>this.api).getWatchPodsResponse(podsList.metadata.resourceVersion)
             const reader = body.getReader()
             const decoder = new TextDecoder()
             let result = ""
@@ -97,5 +98,6 @@ class PodWatcher implements IPodWatcher {
 export {
     type IPodWatcher,
     type WatchEvent,
+    type EventHandler,
     PodWatcher
 }

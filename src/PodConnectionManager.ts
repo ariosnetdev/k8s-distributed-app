@@ -1,11 +1,11 @@
-import { KubeApi, Pod } from "./kubeapi";
+import { IKubeApi, KubeApi, Pod } from "./kubeapi";
 import { IPodWatcher, PodWatcher, type WatchEvent } from "./PodWatcher"
 
 class PCM {
     pods = new Map<string, Pod>()
 
     public constructor(
-        readonly api: KubeApi,
+        readonly api: IKubeApi,
         readonly watcher: IPodWatcher = new PodWatcher(api),
         readonly podIp = ""
     ) {}
@@ -62,14 +62,6 @@ class PCM {
     }
 
 
-    // async updateAllPods() {
-    //     const json = await this.api.getPodsJson()
-    //
-    //     json.items.forEach(pod => {
-    //         this.allPods.set(pod.metadata.name, pod)
-    //     })
-    // }
-
     getEventHandler() {
         // *this* below refers to our current instance of PCM
         return (e: WatchEvent) => {
@@ -98,7 +90,6 @@ class PCM {
                 }
             }
 
-            //this.updateAllPods()
         }
     }
 }
