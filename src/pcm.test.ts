@@ -1,6 +1,6 @@
 import {expect, test} from "bun:test"
 import { PCM } from "./PodConnectionManager"
-import { IKubeApi, PodsListJson, KubeApi, Metadata, Pod, Status } from "./kubeapi"
+import { IKubeApi, PodsListJson, Metadata, Pod } from "./kubeapi"
 import { IPodWatcher, WatchEvent, type EventHandler } from "./PodWatcher"
 
 class CustomPodWatcher implements IPodWatcher {
@@ -38,9 +38,6 @@ test("startup with 2 pods", async() => {
     const pcm = new PCM(kubeApi, watcher, "")
     await pcm.start()
 
-
-
-
     expect(pcm.getActivePods()).toHaveLength(2)
 })
 
@@ -54,135 +51,156 @@ test("startup with no pods", async() => {
     expect(pcm.getActivePods()).toHaveLength(0)
 })
 
+test("delete a pod", async() => {
+    const watcher = new CustomPodWatcher()
+    const kubeApi = new CustomKubeApi()
+    const pcm = new PCM(kubeApi, watcher, "")
+    await pcm.start()
 
+    // we are simulating a delete with the first pod in the list
+    const deletedPod = pcm.getActivePods()[0]
 
+    expect(deletedPod).toBeDefined()
 
-// Event output for a kubectl delete is:
-//
-// Event: MODIFIED
-// Pod Name: myapp-7ff8b696c4-7gm4n
-// Pod Status: Running
-//
-// Event: ADDED
-// Pod Name: myapp-7ff8b696c4-5psvd
-// Pod Status: Pending
-//
-// Event: MODIFIED
-// Pod Name: myapp-7ff8b696c4-5psvd
-// Pod Status: Pending
-//
-// Event: MODIFIED
-// Pod Name: myapp-7ff8b696c4-5psvd
-// Pod Status: Pending
-//
-// Event: MODIFIED
-// Pod Name: myapp-7ff8b696c4-5psvd
-// Pod Status: Running
-//
-// Event: MODIFIED
-// Pod Name: myapp-7ff8b696c4-7gm4n
-// Pod Status: Failed
-//
-// Event: MODIFIED
-// Pod Name: myapp-7ff8b696c4-7gm4n
-// Pod Status: Failed
-//
-// Event: DELETED
-// Pod Name: myapp-7ff8b696c4-7gm4n
-// Pod Status: Failed
-//
+    // new pods start off 'pending'
+    const newPod = Pod.withOpts({
+        name: "new-pod",
+        phase: "Pending"
+    })
 
-test("kubectl delete pod", async() => {
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            deletedPod
+        ))
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "ADDED",
+            newPod
+        )
+    )
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            newPod
+        )
+    )
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            newPod.updatePhase("Running")
+        )
+    )
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            deletedPod.updatePhase("Failed")
+        ))
+    
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "DELETED",
+            deletedPod.updatePhase("Failed")
+        ))
+
+    expect(pcm.getActivePods()).toHaveLength(2)
+})
+
+test("adding a pod", async() => {
     const watcher = new CustomPodWatcher()
     const kubeApi = new CustomKubeApi()
     const pcm = new PCM(kubeApi, watcher, "")
     await pcm.start()
 
     // we are simulating a delete with pod name "one"
-    watcher.sendEvent({
-        type: "MODIFIED",
-        object: {
-            metadata: {
-                name: "one",
-                resourceVersion: ""
-            },
-            status: {
-                phase: "Running",
-                podIP: ""
-            }
-        }
+    const newPod = Pod.withOpts({
+        name: "new-pod",
+        phase: "Pending"
     })
 
-    watcher.sendEvent({
-        type: "ADDED",
-        object: {
-            metadata: {
-                name: "three ",
-                resourceVersion: ""
-            },
-            status: {
-                phase: "Pending",
-                podIP: ""
-            }
-        }
-    })
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            newPod
+        ))
 
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "ADDED",
+            newPod
+        )
+    )
 
-    watcher.sendEvent({
-        type: "MODIFIED",
-        object: {
-            metadata: {
-                name: "three ",
-                resourceVersion: ""
-            },
-            status: {
-                phase: "Pending",
-                podIP: ""
-            }
-        }
-    })
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            newPod.updatePhase("Running")
+        )
+    )
 
-    watcher.sendEvent({
-        type: "MODIFIED",
-        object: {
-            metadata: {
-                name: "three ",
-                resourceVersion: ""
-            },
-            status: {
-                phase: "Running",
-                podIP: ""
-            }
-        }
-    })
+    expect(pcm.getActivePods()).toHaveLength(3)
+})
 
-    watcher.sendEvent({
-        type: "MODIFIED",
-        object: {
-            metadata: {
-                name: "one",
-                resourceVersion: ""
-            },
-            status: {
-                phase: "Failed",
-                podIP: ""
-            }
-        }
-    })
+test("removing a pod / scaling down the deployment", async() => {
+    const watcher = new CustomPodWatcher()
+    const kubeApi = new CustomKubeApi()
+    const pcm = new PCM(kubeApi, watcher, "")
+    await pcm.start()
 
-    watcher.sendEvent({
-        type: "DELETED",
-        object: {
-            metadata: {
-                name: "one",
-                resourceVersion: ""
-            },
-            status: {
-                phase: "Failed",
-                podIP: ""
-            }
-        }
-    })
+    const removedPod = pcm.getActivePods()[0]
 
-    expect(pcm.getActivePods()).toHaveLength(2)
+    expect(removedPod).toBeDefined()
+    expect(removedPod.status.phase === "Running")
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            removedPod
+        ))
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            removedPod.updatePhase("Failed")
+        )
+    )
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "DELETED",
+            removedPod.updatePhase("Failed")
+        )
+    )
+
+    expect(pcm.getActivePods()).toHaveLength(1)
+
+    const secondRemovePod = pcm.getActivePods()[0]
+    expect(secondRemovePod).toBeDefined()
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            secondRemovePod
+        ))
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "MODIFIED",
+            secondRemovePod.updatePhase("Failed")
+        )
+    )
+
+    watcher.sendEvent(
+        WatchEvent.withValues(
+            "DELETED",
+            secondRemovePod.updatePhase("Failed")
+        )
+    )
+
+    expect(pcm.getActivePods()).toHaveLength(0)
 })

@@ -1,12 +1,28 @@
 import {
-    type PodDef,
+    Pod,
     IKubeApi,
     KubeApi
 } from "./kubeapi"
 
-type WatchEvent = {
-    type: string,
-    object: PodDef
+
+
+type WatchType = "MODIFIED" | "ADDED" | "DELETED"
+
+class WatchEvent {
+    constructor(
+        public type: WatchType,
+        public object = new Pod()
+    ) {
+        this.type = type
+    }
+
+    static withValues(type: WatchType, pod: Pod) {
+
+        return new WatchEvent(
+            type,
+            pod
+        )
+    }
 }
 
 type EventHandler = (e: WatchEvent) => void
@@ -97,7 +113,7 @@ class PodWatcher implements IPodWatcher {
 
 export {
     type IPodWatcher,
-    type WatchEvent,
     type EventHandler,
+    WatchEvent,
     PodWatcher
 }

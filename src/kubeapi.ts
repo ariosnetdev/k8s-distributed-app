@@ -35,15 +35,15 @@ class KubeApiError extends Error {
 
 class Metadata {
     constructor(
-        readonly resourceVersion = "",
-        readonly name = ""
+        public resourceVersion = "",
+        public name = ""
     ) {}
 }
 
 class Status {
     constructor(
-        readonly phase = "",
-        readonly podIP = ""
+        public phase = "",
+        public podIP = ""
     ) {}
 }
 
@@ -55,9 +55,15 @@ type PodCreateOpts = {
 
 class Pod {
     constructor(
-        readonly status = new Status(),
-        readonly  metadata = new Metadata()
+        public status = new Status(),
+        public metadata = new Metadata()
     ) {}
+
+    updatePhase(phase: string) {
+
+        this.status.phase = phase
+        return this
+    }
 
     static withOpts({
         phase = "",
